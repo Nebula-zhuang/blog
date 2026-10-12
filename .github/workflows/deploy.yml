@@ -1,0 +1,66 @@
+name: Deploy to GitHub Pages
+
+# 说明：如果你用 Cloudflare Pages（推荐），这个文件可以删掉。
+# Cloudflare 在它自己的控制台里连接仓库即可自动构建，不需要 GitHub Actions。
+# 保留它是为了让你随时能切回 GitHub Pages：把仓库 Settings → Pages → Source
+# 选成 "GitHub Actions" 就会开始生效。
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # 自动识别站点地址与子路径：
+      #   仓库名 = 用户名.github.io → base_path 是 "/"
+      #   其他仓库名             → base_path 是 "/仓库名"
+      # 两者都通过环境变量注入构建，代码不用改。
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+        env:
+          SITE_URL: ${{ steps.pages.outputs.origin }}
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

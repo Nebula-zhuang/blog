@@ -1,0 +1,69 @@
+---
+import type { Post } from '../utils/posts';
+import { formatDate, postCategory, postUrl, readingTime } from '../utils/posts';
+import { withBase } from '../utils/url';
+
+interface Props {
+  post: Post;
+  /** 封面图放左边还是右边；不传就按序号交错 */
+  side?: 'left' | 'right';
+  /** 序号，用来交错左右 */
+  index?: number;
+}
+
+const { post, side, index = 0 } = Astro.props;
+const { title, description, pubDate, tags, pinned, cover } = post.data;
+const href = postUrl(post);
+const category = postCategory(post);
+
+// 没有封面图时不占位，保持列表紧凑
+const imageSide = side ?? (index % 2 === 0 ? 'right' : 'left');
+---
+
+<article class:list={['post-item', { 'has-cover': Boolean(cover) }]} data-side={cover ? imageSide : undefined}>
+  {cover && <img class="post-thumb" src={withBase(cover)} alt="" loading="lazy" decoding="async" />}
+
+  <div class="post-body">
+    <h3>
+      <a href={href}>{title}</a>
+    </h3>
+
+    <p class="excerpt">{description}</p>
+
+    <div class="post-meta">
+      {pinned && <span class="pin-badge">置顶</span>}
+      <time datetime={pubDate.toISOString()}>{formatDate(pubDate)}</time>
+      <span class="sep">{readingTime(post.body)}</span>
+      {category !== '未分类' && <span class="meta-cat">{category}</span>}
+      {
+        tags.length > 0 && (
+          <span class="meta-tags">
+            {tags.slice(0, 3).map((tag) => (
+              <span class="tag">{tag}</span>
+            ))}
+          </span>
+        )
+      }
+    </div>
+  </div>
+</article>
+
+<style>
+  .meta-cat {
+    color: var(--text-dim);
+  }
+
+  .meta-tags {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-left: auto;
+  }
+
+  @media (max-width: 560px) {
+    .meta-tags {
+      margin-left: 0;
+      width: 100%;
+    }
+  }
+</style>

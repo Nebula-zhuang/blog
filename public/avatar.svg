@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect width="128" height="128" rx="64" fill="#f4f4f5"/>
+  <text x="64" y="82" text-anchor="middle"
+        font-family="-apple-system, 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif"
+        font-size="54" fill="#71717a">云</text>
+</svg>

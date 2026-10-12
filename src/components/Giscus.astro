@@ -1,0 +1,181 @@
+---
+import { site } from '../config';
+
+const { repo, repoId, category, categoryId, mapping, reactionsEnabled, inputPosition, lang } =
+  site.giscus;
+
+// 三项都填了才算配置完成
+const configured = Boolean(repo && repoId && categoryId);
+---
+
+<section class="comments section" id="comments" data-pagefind-ignore>
+  <div class="section-head">
+    <h2>评论</h2>
+    <span class="dim comments-hint">由 GitHub Discussions 驱动 · 登录 GitHub 即可发言</span>
+  </div>
+
+  {
+    configured ? (
+      <div class="giscus-wrap">
+        <div
+          class="giscus"
+          data-repo={repo}
+          data-repo-id={repoId}
+          data-category={category}
+          data-category-id={categoryId}
+          data-mapping={mapping}
+          data-strict="0"
+          data-reactions-enabled={reactionsEnabled}
+          data-emit-metadata="0"
+          data-input-position={inputPosition}
+          data-theme="light"
+          data-lang={lang}
+          data-loading="lazy"
+        />
+      </div>
+    ) : (
+      <div class="comments-setup">
+        <p class="setup-title">
+          <span class="setup-badge">待配置</span>
+          评论区已经在这里了，但还差 3 个值才能用
+        </p>
+        <p class="setup-lead">
+          评论用的是 Giscus（数据存在你自己的 GitHub Discussions 里，不花钱、不需要服务器）。按下面三步做完，
+          把三个值发我，或者自己填进 <code>src/config.ts</code> 的 <code>giscus</code> 字段：
+        </p>
+        <ol>
+          <li>
+            新建一个 <b>公开仓库</b>，比如 <code>blog-comments</code>（专门放评论数据，和博客代码分开）
+          </li>
+          <li>
+            在那个仓库里：<b>Settings → General → Features</b> 勾上 <b>Discussions</b>，再到
+            <b>Discussions</b> 标签页 → <b>New category</b>，名字写 <b>General</b>，类型选
+            <b>Announcements</b>
+          </li>
+          <li>
+            打开 <a href="https://giscus.app/zh-CN" target="_blank" rel="noopener noreferrer">giscus.app</a>，
+            仓库填 <code>你的用户名/blog-comments</code>，把它生成的三个值填进
+            <code>src/config.ts</code>：<code>repo</code>、<code>repoId</code>、<code>categoryId</code>
+          </li>
+        </ol>
+        <p class="dim setup-note">
+          想让我来填也行：把 <code>data-repo</code>、<code>data-repo-id</code>、
+          <code>data-category-id</code> 三个值发我，我直接写进配置。填完这里就会出现真正的评论框。
+        </p>
+      </div>
+    )
+  }
+</section>
+
+<style>
+  .comments {
+    margin-top: 48px;
+  }
+
+  .comments-hint {
+    font-size: 0.78rem;
+  }
+
+  .giscus-wrap {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    min-height: 180px;
+  }
+
+  .comments-setup {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-soft);
+    padding: 20px 22px;
+    font-size: 0.9rem;
+    color: var(--text-soft);
+  }
+
+  .setup-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0 0 10px;
+    color: var(--text);
+    font-weight: 650;
+    font-size: 0.98rem;
+  }
+
+  .setup-badge {
+    padding: 2px 8px;
+    border-radius: 99px;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .setup-lead {
+    margin: 0 0 12px;
+    font-size: 0.88rem;
+  }
+
+  .comments-setup ol {
+    margin: 0;
+    padding-left: 1.3em;
+  }
+
+  .comments-setup li + li {
+    margin-top: 8px;
+  }
+
+  .comments-setup code {
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: var(--bg-sunken);
+    border: 1px solid var(--border);
+    font-size: 0.86em;
+  }
+
+  .comments-setup a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .setup-note {
+    margin: 14px 0 0;
+    font-size: 0.82rem;
+  }
+</style>
+
+<script>
+  function initGiscus() {
+    const holder = document.querySelector<HTMLElement>('.giscus');
+    if (!holder) return;
+
+    // 已经注入过就跳过，避免每次导航都重载评论
+    if (holder.querySelector('iframe.giscus-frame')) return;
+
+    // 客户端路由切换后 <script> 不会自动执行，这里手动重建一次
+    holder.querySelector('script[src*="giscus.app"]')?.remove();
+
+    const attrs: Record<string, string> = {};
+    for (const { name, value } of Array.from(holder.attributes)) {
+      if (name.startsWith('data-')) attrs[name] = value;
+    }
+
+    // 评论主题跟随本站暗色模式
+    const isDark = document.documentElement.dataset.theme === 'dark';
+    attrs['data-theme'] = isDark ? 'dark' : 'light';
+
+    const script = document.createElement('script');
+    script.src = 'https://giscus.app/client.js';
+    script.async = true;
+    script.crossOrigin = 'anonymous';
+    for (const [key, value] of Object.entries(attrs)) {
+      script.setAttribute(key, value);
+    }
+    holder.appendChild(script);
+  }
+
+  initGiscus();
+  document.addEventListener('astro:page-load', initGiscus);
+</script>

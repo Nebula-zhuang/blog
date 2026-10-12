@@ -1,0 +1,27 @@
+# Pagefind 索引配置
+# 详细说明：https://pagefind.app/docs/config-options/
+
+# 只索引主内容区，排除导航、页脚、评论等公共区块
+root_selector: "#main"
+exclude_selectors:
+  - "nav"
+  - "footer"
+  - ".site-footer"
+  - ".comments"
+  - ".reactions"
+  - ".search-modal"
+  - "script"
+  - "style"
+  - ".to-top"
+
+# 中文分词：强制按中文词典切词，让"部署""评论"这类词能搜到
+force_language: "zh"
+
+# 摘录长度（词数）
+excerpt_length: 26
+
+# 索引输出到 dist/pagefind，站点根路径下即为 /pagefind/
+output_subdir: pagefind
+
+# 用我们自己的搜索 UI，所以不生成 Pagefind 默认界面
+ui: false

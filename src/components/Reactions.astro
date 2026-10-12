@@ -1,0 +1,280 @@
+---
+interface Props {
+  /** 文章路径（不含 base），作为统计的键，例如 /posts/tech/deploy-to-edge/ */
+  path: string;
+}
+const { path } = Astro.props;
+---
+
+<!--
+  阅读量 / 点赞 / 在线人数
+  数据来自 Cloudflare Pages Functions（functions/api/stats.ts）。
+  本地或未绑定 KV 时会自动降级为浏览器本地记录，并给出提示。
+-->
+<div class="reactions" data-path={path} data-mode="pending" data-pagefind-ignore>
+  <div class="stat" title="阅读量">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="2.6" />
+    </svg>
+    <b data-views>–</b>
+    <span>次阅读</span>
+  </div>
+
+  <div class="stat" title="当前在线">
+    <span class="pulse" aria-hidden="true"></span>
+    <b data-online>–</b>
+    <span>人在线</span>
+  </div>
+
+  <button class="like" type="button" data-like aria-pressed="false" title="喜欢这篇">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 20s-7.5-4.6-7.5-9.4A4.1 4.1 0 0 1 12 8.2a4.1 4.1 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20Z" />
+    </svg>
+    <b data-likes>0</b>
+  </button>
+</div>
+
+<p class="reactions-note dim" data-note hidden></p>
+
+<style>
+  .reactions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 20px;
+    padding: 13px 16px;
+    margin: 32px 0 4px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-soft);
+    font-size: 0.83rem;
+    color: var(--text-soft);
+  }
+
+  .stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .stat b {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pulse {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #22c55e;
+  }
+
+  .like {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding: 5px 12px;
+    border-radius: 99px;
+    border: 1px solid var(--border-strong);
+    background: var(--panel);
+    color: var(--text-soft);
+    font-family: inherit;
+    font-size: 0.83rem;
+    cursor: pointer;
+    transition: all 0.16s ease;
+  }
+
+  .like b {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .like:hover {
+    color: var(--accent);
+    border-color: var(--accent-border);
+  }
+
+  .like[aria-pressed='true'] {
+    color: #fff;
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+
+  .like[aria-pressed='true'] b {
+    color: #fff;
+  }
+
+  .like[aria-pressed='true'] svg {
+    fill: currentColor;
+  }
+
+  .reactions-note {
+    margin: 6px 2px 0;
+    font-size: 0.76rem;
+  }
+
+  @media (max-width: 520px) {
+    .like {
+      margin-left: 0;
+    }
+  }
+</style>
+
+<script>
+  const API = '/api/stats';
+  const POLL_MS = 45000;
+
+  type Stats = { views: number; likes: number; online?: number; liked?: boolean };
+
+  function localStats(path: string): Stats {
+    let raw: Stats = { views: 0, likes: 0 };
+    try {
+      raw = JSON.parse(localStorage.getItem(`local-stats:${path}`) || '') as Stats;
+    } catch {
+      raw = { views: 0, likes: 0 };
+    }
+    const liked = localStorage.getItem(`local-liked:${path}`) === '1';
+    return { views: raw.views ?? 0, likes: raw.likes ?? 0, liked };
+  }
+
+  function saveLocal(path: string, stats: Stats) {
+    try {
+      localStorage.setItem(
+        `local-stats:${path}`,
+        JSON.stringify({ views: stats.views, likes: stats.likes })
+      );
+    } catch {
+      /* 隐私模式忽略 */
+    }
+  }
+
+  function initReactions() {
+    const root = document.querySelector<HTMLElement>('.reactions[data-mode="pending"]');
+    if (!root) return;
+    root.dataset.mode = 'live';
+
+    const path = root.dataset.path || location.pathname;
+    const viewsEl = root.querySelector<HTMLElement>('[data-views]');
+    const likesEl = root.querySelector<HTMLElement>('[data-likes]');
+    const onlineEl = root.querySelector<HTMLElement>('[data-online]');
+    const likeBtn = root.querySelector<HTMLButtonElement>('[data-like]');
+    const noteEl = document.querySelector<HTMLElement>('.reactions-note');
+    const viewedKey = `viewed:${path}:${new Date().toISOString().slice(0, 10)}`;
+
+    let offline = false;
+    let timer: number | undefined;
+
+    const paint = (s: Stats) => {
+      if (viewsEl) viewsEl.textContent = String(s.views ?? 0);
+      if (likesEl) likesEl.textContent = String(s.likes ?? 0);
+      if (onlineEl && typeof s.online === 'number') {
+        onlineEl.textContent = String(Math.max(1, s.online));
+      }
+      if (likeBtn && typeof s.liked === 'boolean') {
+        likeBtn.setAttribute('aria-pressed', s.liked ? 'true' : 'false');
+      }
+    };
+
+    const goOffline = () => {
+      if (offline) return;
+      offline = true;
+      const local = localStats(path);
+      try {
+        if (!localStorage.getItem(viewedKey)) {
+          local.views += 1;
+          localStorage.setItem(viewedKey, '1');
+          saveLocal(path, local);
+        }
+      } catch {
+        /* 隐私模式忽略 */
+      }
+      paint(local);
+      if (onlineEl) onlineEl.textContent = '1';
+      if (noteEl) {
+        noteEl.hidden = false;
+        noteEl.textContent =
+          '当前是本地或未绑定 KV 的环境，点赞与阅读量只记在这台浏览器里；部署到 Cloudflare Pages 并绑定 KV 后即为全站真实数据。';
+      }
+    };
+
+    const post = async (action: 'view' | 'like' | 'unlike') => {
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ path, action }),
+        cache: 'no-store',
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      return (await res.json()) as Stats;
+    };
+
+    const get = async () => {
+      const res = await fetch(`${API}?path=${encodeURIComponent(path)}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(String(res.status));
+      return (await res.json()) as Stats;
+    };
+
+    const boot = async () => {
+      try {
+        paint(await get());
+
+        // 同一天同一篇文章只上报一次阅读，避免刷新刷高数字
+        let counted = '1';
+        try {
+          counted = localStorage.getItem(viewedKey) ?? '';
+          if (!counted) localStorage.setItem(viewedKey, '1');
+        } catch {
+          counted = '';
+        }
+        if (!counted) paint(await post('view'));
+
+        timer = window.setInterval(async () => {
+          try {
+            paint(await post('view'));
+          } catch {
+            /* 静默失败，下次再试 */
+          }
+        }, POLL_MS);
+      } catch {
+        goOffline();
+      }
+    };
+
+    likeBtn?.addEventListener('click', async () => {
+      const liked = likeBtn.getAttribute('aria-pressed') === 'true';
+
+      if (offline) {
+        const local = localStats(path);
+        local.likes = Math.max(0, local.likes + (liked ? -1 : 1));
+        likeBtn.setAttribute('aria-pressed', liked ? 'false' : 'true');
+        try {
+          localStorage.setItem(`local-liked:${path}`, liked ? '0' : '1');
+        } catch {
+          /* 隐私模式忽略 */
+        }
+        saveLocal(path, local);
+        paint(local);
+        return;
+      }
+
+      try {
+        paint(await post(liked ? 'unlike' : 'like'));
+      } catch {
+        goOffline();
+      }
+    });
+
+    document.addEventListener(
+      'astro:before-swap',
+      () => {
+        if (timer) window.clearInterval(timer);
+      },
+      { once: true }
+    );
+  }
+
+  initReactions();
+  document.addEventListener('astro:page-load', initReactions);
+</script>

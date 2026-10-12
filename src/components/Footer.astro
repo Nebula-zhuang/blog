@@ -1,0 +1,18 @@
+---
+import { site } from '../config';
+import { withBase } from '../utils/url';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer" data-pagefind-ignore>
+  <div class="site-footer-inner">
+    <p style="margin:0">© {year} {site.author}</p>
+
+    <p style="margin:0">
+      <a href={withBase('/rss.xml')}>RSS</a>
+      <span class="sep"> · </span>
+      <a href={withBase('/about')}>关于</a>
+    </p>
+  </div>
+</footer>

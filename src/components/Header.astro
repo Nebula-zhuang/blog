@@ -1,0 +1,45 @@
+---
+import { site } from '../config';
+import { withBase } from '../utils/url';
+import Search from './Search.astro';
+import ThemeToggle from './ThemeToggle.astro';
+
+// 高亮判断：去掉 base 前缀再比
+const basePrefix = withBase('/').replace(/\/$/, '');
+const stripBase = (p: string) =>
+  basePrefix && p.startsWith(basePrefix) ? p.slice(basePrefix.length) || '/' : p;
+const path = stripBase(Astro.url.pathname).replace(/\/$/, '') || '/';
+
+const isActive = (href: string) => {
+  const h = href.replace(/\/$/, '') || '/';
+  return h === '/' ? path === '/' : path === h || path.startsWith(`${h}/`);
+};
+---
+
+<header class="site-header" data-pagefind-ignore>
+  <div class="site-header-inner">
+    <a class="site-title" href={withBase('/')}>{site.title}</a>
+
+    <nav class="top-nav" aria-label="主导航">
+      <a class="top-link" class:list={[{ 'is-active': path === '/' }]} href={withBase('/')}>
+        Home
+      </a>
+      {
+        site.nav.map((item) => (
+          <a
+            class="top-link"
+            class:list={[{ 'is-active': isActive(item.href) }]}
+            href={withBase(item.href)}
+          >
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="header-tools">
+      <Search />
+      <ThemeToggle />
+    </div>
+  </div>
+</header>

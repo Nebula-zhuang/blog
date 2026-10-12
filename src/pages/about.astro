@@ -1,0 +1,98 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { site } from '../config';
+import { collectCategories, collectTags, getSortedPosts } from '../utils/posts';
+import { withBase } from '../utils/url';
+
+const posts = await getSortedPosts();
+const tags = collectTags(posts);
+const categories = collectCategories(posts);
+
+const stack = [
+  { name: 'Astro', why: '内容优先，默认零 JS，需要交互的地方才加载脚本' },
+  { name: 'Pagefind', why: '构建时生成全文索引，搜索完全在前端完成（支持中文分词）' },
+  { name: 'Giscus', why: '评论存在 GitHub Discussions，不占服务器' },
+  { name: 'Cloudflare Pages + KV', why: '静态托管免费，点赞/阅读量走边缘函数' },
+];
+---
+
+<BaseLayout title="关于" description={`关于 ${site.title}：写什么、用什么搭的、怎么联系。`}>
+  <header class="page-head reveal">
+    <p class="eyebrow">ABOUT</p>
+    <h1>关于</h1>
+  </header>
+
+  <div class="prose">
+    <p class="reveal">
+      你好，我是 <b>{site.author}</b>。这里是我的个人博客——{site.tagline}。
+    </p>
+
+    <p class="reveal">
+      目前站上有 <b>{posts.length}</b> 篇文章、<b>{categories.length}</b> 个分类、<b>{tags.length}</b>
+      个标签。写下的大多是技术笔记、读过的书，以及一些没头没尾的想法。写得慢，但不打算停。
+    </p>
+
+    <h2 class="reveal">这个站是怎么搭的</h2>
+    <p class="reveal">
+      整站是<b>静态</b>的：文章是 Markdown，构建时生成 HTML，直接托管在 CDN 上，打开快、成本为零。
+      需要"活"数据的地方（点赞、阅读量、在线人数）交给边缘函数，不常驻服务器。
+    </p>
+
+    <div class="stack reveal">
+      {
+        stack.map((item) => (
+          <div class="stack-item">
+            <b>{item.name}</b>
+            <span class="muted">{item.why}</span>
+          </div>
+        ))
+      }
+    </div>
+
+    <h2 class="reveal">怎么联系我</h2>
+    <ul class="reveal">
+      {
+        site.social.map((item) => (
+          <li>
+            <a
+              href={withBase(item.href)}
+              target={item.href.startsWith('http') ? '_blank' : undefined}
+              rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+            >
+              {item.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+
+    <p class="reveal muted">
+      想留言的话，随便找一篇文章，滑到底部就是评论区。
+    </p>
+  </div>
+</BaseLayout>
+
+<style>
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 18px 0 28px;
+  }
+
+  .stack-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px;
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-soft);
+    font-size: 0.9rem;
+  }
+
+  .stack-item b {
+    min-width: 180px;
+  }
+</style>

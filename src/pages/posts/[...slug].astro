@@ -1,0 +1,172 @@
+---
+import { render } from 'astro:content';
+import type { MarkdownHeading } from 'astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Toc from '../../components/Toc.astro';
+import Giscus from '../../components/Giscus.astro';
+import Reactions from '../../components/Reactions.astro';
+import PostCard from '../../components/PostCard.astro';
+import { site } from '../../config';
+import {
+  formatDate,
+  getSortedPosts,
+  postCategory,
+  postPath,
+  postUrl,
+  readingTime,
+} from '../../utils/posts';
+import { withBase } from '../../utils/url';
+
+export async function getStaticPaths() {
+  const posts = await getSortedPosts();
+  // 文章 id 形如 'tech/astro-static-site'（分类目录 + 文件名），
+  // 路由是 rest 形式的 [...slug]，但 params 的键仍然只写 slug。
+  return posts.map((post, i) => ({
+    params: { slug: post.id },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content, headings } = await render(post);
+const { title, description, pubDate, updatedDate, tags } = post.data;
+
+const category = postCategory(post);
+// 统计接口用不含 base 的路径当键，换域名/换子路径后数据仍然连续
+const statsPath = postPath(post);
+const canonical = `${new URL(site.url).origin}${withBase(statsPath)}`;
+
+const h2 = headings.filter((h: MarkdownHeading) => h.depth === 2);
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: title,
+  description,
+  datePublished: pubDate.toISOString(),
+  dateModified: (updatedDate ?? pubDate).toISOString(),
+  author: { '@type': 'Person', name: site.author },
+  mainEntityOfPage: canonical,
+  keywords: tags.join(', '),
+};
+
+const related = (await getSortedPosts())
+  .filter((p) => p.id !== post.id && p.data.tags.some((t) => tags.includes(t)))
+  .slice(0, 3);
+---
+
+<BaseLayout title={title} description={description} type="article" jsonLd={jsonLd}>
+  <article class="post">
+    <header class="post-header reveal">
+      <a class="back dim" href={withBase('/blog')}>← 全部文章</a>
+
+      <h1>{title}</h1>
+      <p class="post-desc muted">{description}</p>
+
+      <div class="post-meta">
+        <time datetime={pubDate.toISOString()}>{formatDate(pubDate)}</time>
+        <span class="sep">{readingTime(post.body)}</span>
+        {category !== '未分类' && <span class="meta-cat">{category}</span>}
+        {updatedDate && <span class="sep">修订于 {formatDate(updatedDate)}</span>}
+      </div>
+
+      {
+        tags.length > 0 && (
+          <div class="tag-row post-tags">
+            {tags.map((tag) => (
+              <span class="tag">{tag}</span>
+            ))}
+          </div>
+        )
+      }
+    </header>
+
+    <div class="post-body">
+      <div class="prose reveal" id="post-content">
+        <Content />
+      </div>
+
+      {h2.length > 2 && <Toc headings={headings} />}
+    </div>
+
+    <Reactions path={statsPath} />
+
+    <Giscus />
+
+    {
+      related.length > 0 && (
+        <section class="section related">
+          <div class="section-head">
+            <h2>相关文章</h2>
+          </div>
+          <div class="post-list">
+            {related.map((p, i) => (
+              <div class="reveal">
+                <PostCard post={p} index={i} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )
+    }
+  </article>
+</BaseLayout>
+
+<style>
+  .post {
+    padding-top: 6px;
+  }
+
+  .back {
+    display: inline-block;
+    margin-bottom: 18px;
+    font-size: 0.85rem;
+  }
+
+  .back:hover {
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 0 0 12px;
+    font-size: clamp(1.6rem, 4vw, 2.1rem);
+    letter-spacing: -0.02em;
+  }
+
+  .post-desc {
+    margin: 0 0 16px;
+    font-size: 0.98rem;
+  }
+
+  .meta-cat {
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .meta-cat:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent-border);
+  }
+
+  .post-tags {
+    margin-top: 14px;
+  }
+
+  .post-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+    margin-top: 26px;
+  }
+
+  /* 宽屏时文章右侧给个目录，但不要挤压正文 */
+  @media (min-width: 1180px) {
+    .post-body {
+      grid-template-columns: minmax(0, var(--read)) 170px;
+      align-items: start;
+    }
+  }
+
+  .related {
+    margin-top: 48px;
+  }
+</style>

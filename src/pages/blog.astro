@@ -1,0 +1,63 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/PostCard.astro';
+import { getSortedPosts } from '../utils/posts';
+import { withBase } from '../utils/url';
+
+const posts = await getSortedPosts();
+---
+
+<BaseLayout title="全部文章" description={`全部文章，共 ${posts.length} 篇。`}>
+  <header class="page-head reveal">
+    <p class="eyebrow">POSTS</p>
+    <h1>全部文章</h1>
+    <p>共 {posts.length} 篇</p>
+  </header>
+
+  {posts.length > 0 && (
+    <div class="post-list">
+      {
+        posts.map((post, i) => (
+          <div class="reveal">
+            <PostCard post={post} index={i} />
+          </div>
+        ))
+      }
+    </div>
+  )}
+
+  {
+    posts.length === 0 && (
+      <div class="empty">
+        <p>还没有文章。</p>
+        <p class="dim">
+          在 <code>src/content/blog/</code> 下新建一个 <code>.md</code> 文件就能发一篇，
+          具体写法见 <code>docs/写作指南.md</code>。
+        </p>
+        <p>
+          <a class="btn" href={withBase('/')}>回到首页</a>
+        </p>
+      </div>
+    )
+  }
+</BaseLayout>
+
+<style>
+  .empty {
+    padding: 40px 0;
+    font-size: 0.95rem;
+    color: var(--text-soft);
+  }
+
+  .empty p {
+    margin: 0 0 10px;
+  }
+
+  .empty code {
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: var(--bg-sunken);
+    border: 1px solid var(--border);
+    font-size: 0.88em;
+  }
+</style>

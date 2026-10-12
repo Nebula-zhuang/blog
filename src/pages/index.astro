@@ -1,0 +1,167 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/PostCard.astro';
+import { site } from '../config';
+import { collectTags, getSortedPosts, postUrl, readingTime } from '../utils/posts';
+import { withBase } from '../utils/url';
+
+const posts = await getSortedPosts();
+const tags = collectTags(posts);
+// 精选：优先置顶文章，否则用最新一篇
+const featured = posts.find((post) => post.data.pinned) ?? posts[0];
+// 列表里去掉精选那篇，避免重复出现
+const rest = posts.filter((post) => post.id !== featured?.id).slice(0, site.pageSize);
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Blog',
+  name: site.title,
+  description: site.description,
+  url: site.url,
+  author: { '@type': 'Person', name: site.author },
+};
+---
+
+<BaseLayout splash={true} description={site.description} jsonLd={jsonLd}>
+  <!-- 头部：大标题 + 流式输出问候 + 入口 -->
+  <header class="hero reveal">
+    <h1 class="hero-title">{site.title}</h1>
+
+    <!-- 像 SSE 一样一个字一个字蹦出来 -->
+    <p class="hero-stream" data-stream-text={site.streamLine}>
+      <span id="hero-stream-text" />
+      <span class="hero-caret" aria-hidden="true" />
+    </p>
+
+    <div class="hero-actions">
+      <a class="btn btn-primary" href={withBase('/blog')}>开始阅读</a>
+      <a class="btn" href={withBase('/about')}>关于我</a>
+    </div>
+  </header>
+
+  <!-- 精选 -->
+  {
+    featured && (
+      <section class="section">
+        <a class:list={['feature', 'reveal', { 'has-cover': Boolean(featured.data.cover) }]} href={postUrl(featured)}>
+          {featured.data.cover && (
+            <img class="feature-thumb" src={withBase(featured.data.cover)} alt="" loading="lazy" />
+          )}
+
+          <span class="feature-body">
+            <span class="feature-kicker">
+              {featured.data.pinned ? '置顶' : '最新'} · {readingTime(featured.body)}
+            </span>
+            <h3>{featured.data.title}</h3>
+            <p>{featured.data.description}</p>
+            <span class="post-meta">
+              <time datetime={featured.data.pubDate.toISOString()}>
+                {featured.data.pubDate.toLocaleDateString('zh-CN', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </time>
+            </span>
+          </span>
+        </a>
+      </section>
+    )
+  }
+
+  <!-- 文章列表 -->
+  {
+    rest.length > 0 && (
+      <section class="section">
+        <div class="section-head">
+          <h2>最近文章</h2>
+          <a class="more" href={withBase('/blog')}>
+            全部 →
+          </a>
+        </div>
+
+        <div class="post-list">
+          {rest.map((post, i) => (
+            <div class="reveal">
+              <PostCard post={post} index={i} />
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  <!-- 一篇文章都还没有时的引导 -->
+  {
+    !featured && (
+      <section class="section empty-state reveal">
+        <h2>还没有文章</h2>
+        <p class="muted">
+          在 <code>src/content/blog/</code> 下新建一个 <code>.md</code> 文件就能发一篇。
+          完整写法见 <code>docs/写作指南.md</code>。
+        </p>
+        <pre><code>---
+title: 我的第一篇文章
+description: 一句话摘要
+pubDate: 2026-02-01
+tags: ['随笔']
+---
+
+正文从这里开始……</code></pre>
+      </section>
+    )
+  }
+
+  <!-- 标签 -->
+  {
+    tags.length > 0 && (
+      <section class="section">
+        <div class="section-head">
+          <h2>标签</h2>
+        </div>
+        <div class="tag-row">
+          {tags.slice(0, 14).map(({ tag, count }) => (
+            <span class="tag reveal">
+              {tag}
+              <span class="pill-count">{count}</span>
+            </span>
+          ))}
+        </div>
+      </section>
+    )
+  }
+</BaseLayout>
+
+<script>
+  // 首页那句问候也走流式输出，和入场页同款
+  function initHeroStream() {
+    const wrap = document.querySelector<HTMLElement>('.hero-stream');
+    const target = document.getElementById('hero-stream-text');
+    if (!wrap || !target || wrap.dataset.ready === '1') return;
+    wrap.dataset.ready = '1';
+
+    const text = wrap.dataset.streamText || '';
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (reduced || !text) {
+      target.textContent = text;
+      wrap.classList.add('is-done');
+      return;
+    }
+
+    let i = 0;
+    const tick = () => {
+      i += 1;
+      target.textContent = text.slice(0, i);
+      if (i < text.length) {
+        window.setTimeout(tick, 160);
+      } else {
+        wrap.classList.add('is-done');
+      }
+    };
+    window.setTimeout(tick, 300);
+  }
+
+  initHeroStream();
+  document.addEventListener('astro:page-load', initHeroStream);
+</script>

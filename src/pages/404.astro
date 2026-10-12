@@ -1,0 +1,98 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getSortedPosts, postUrl } from '../utils/posts';
+import { withBase } from '../utils/url';
+
+const posts = await getSortedPosts();
+const suggestions = posts.slice(0, 3);
+---
+
+<BaseLayout title="页面走丢了" description="404，这个页面不存在。" showSidebar={false}>
+  <div class="notfound">
+    <p class="code">404</p>
+    <h1>这个页面好像不存在</h1>
+    <p class="muted">可能是链接过期了，也可能是文章还没写。要不试试搜索（按 <kbd>/</kbd>）？</p>
+
+    <div class="actions">
+      <a class="btn btn-primary" href={withBase('/')}>回到首页</a>
+      <a class="btn" href={withBase('/blog')}>全部文章</a>
+    </div>
+
+    {
+      suggestions.length > 0 && (
+        <div class="suggest">
+          <p class="dim">或者看看这些：</p>
+          <ul>
+            {suggestions.map((post) => (
+              <li>
+                <a href={postUrl(post)}>{post.data.title}</a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .notfound {
+    padding: 60px 0 30px;
+    text-align: center;
+  }
+
+  .code {
+    margin: 0;
+    font-size: clamp(3.6rem, 16vw, 6rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: var(--bg-sunken);
+    -webkit-text-stroke: 1px var(--border-strong);
+  }
+
+  h1 {
+    margin: 8px 0 10px;
+    font-size: 1.4rem;
+  }
+
+  kbd {
+    padding: 1px 6px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--bg-soft);
+    font-size: 0.85em;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 24px;
+  }
+
+  .suggest {
+    margin-top: 38px;
+  }
+
+  .suggest ul {
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+  }
+
+  .suggest li + li {
+    margin-top: 6px;
+  }
+
+  .suggest a {
+    color: var(--text-soft);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .suggest a:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent-border);
+  }
+</style>

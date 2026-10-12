@@ -1,0 +1,70 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { collectTags, getSortedPosts } from '../../utils/posts';
+import { withBase } from '../../utils/url';
+
+const posts = await getSortedPosts();
+const tags = collectTags(posts);
+---
+
+<BaseLayout title="标签" description="全部标签。">
+  <header class="page-head reveal">
+    <p class="eyebrow">TAGS</p>
+    <h1>标签</h1>
+    <p>共 {tags.length} 个标签 · {posts.length} 篇文章</p>
+  </header>
+
+  {
+    tags.length > 0 ? (
+      <div class="tag-cloud">
+        {tags.map(({ tag, count }) => (
+          <a class="cloud-item reveal" href={withBase(`/tags/${encodeURIComponent(tag)}/`)}>
+            <span>{tag}</span>
+            <span class="pill-count">{count}</span>
+          </a>
+        ))}
+      </div>
+    ) : (
+      <div class="empty reveal">
+        <p class="muted">还没有标签。</p>
+        <p class="dim">在文章的 frontmatter 里写 tags，例如 tags: ['随笔', '读书']，标签就会自动汇总到这里。</p>
+      </div>
+    )
+  }
+</BaseLayout>
+
+<style>
+  .tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+  }
+
+  .cloud-item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+    padding: 6px 13px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    font-size: 0.9rem;
+    color: var(--text-soft);
+    transition: all 0.15s ease;
+  }
+
+  .cloud-item:hover {
+    color: var(--accent);
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+  }
+
+  .empty {
+    padding: 30px 0;
+    font-size: 0.94rem;
+  }
+
+  .empty p {
+    margin: 0 0 10px;
+  }
+</style>

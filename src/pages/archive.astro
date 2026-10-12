@@ -1,0 +1,121 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { site } from '../config';
+import { formatDate, getSortedPosts, groupByYear, postUrl } from '../utils/posts';
+
+const posts = await getSortedPosts();
+const groups = groupByYear(posts);
+---
+
+<BaseLayout title="归档" description={`${site.title} 的文章归档，按年份排列。`}>
+  <header class="page-head reveal">
+    <p class="eyebrow">TIMELINE</p>
+    <h1>归档</h1>
+    <p>{groups.length} 个年份 · {posts.length} 篇文章</p>
+  </header>
+
+  <div class="timeline">
+    {
+      groups.map(({ year, posts: list }) => (
+        <section class="year-block reveal">
+          <h2 class="year">
+            {year}
+            <span class="dim year-count">{list.length} 篇</span>
+          </h2>
+          <ul class="year-list">
+            {list.map((post) => (
+              <li>
+                <a href={postUrl(post)}>
+                  <span class="li-title">{post.data.title}</span>
+                  <span class="li-date dim">
+                    {formatDate(post.data.pubDate)
+                      .replace(/^\d+年/, '')
+                      .replace('月', '/')
+                      .replace('日', '')}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .timeline {
+    position: relative;
+    padding-left: 18px;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 10px;
+    bottom: 10px;
+    width: 1px;
+    background: var(--border);
+  }
+
+  .year-block {
+    margin-bottom: 28px;
+  }
+
+  .year {
+    position: relative;
+    margin: 0 0 8px;
+    font-size: 1.16rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .year::before {
+    content: '';
+    position: absolute;
+    left: -19px;
+    top: 0.62em;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-dim);
+  }
+
+  .year-count {
+    margin-left: 10px;
+    font-size: 0.76rem;
+    font-weight: 400;
+  }
+
+  .year-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .year-list a {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 8px 10px;
+    margin-left: -10px;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .year-list a:hover {
+    background: var(--bg-soft);
+    color: var(--accent);
+  }
+
+  .li-title {
+    font-size: 0.96rem;
+  }
+
+  .li-date {
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+</style>

@@ -1,0 +1,357 @@
+---
+// 站内搜索：基于 Pagefind（构建时生成静态索引，运行时纯前端查询，不需要服务器）
+// 索引只在 `pnpm build` 时生成，所以 `pnpm dev` 下会提示先构建。
+---
+
+<button id="search-open" class="search-btn" type="button" aria-label="站内搜索">
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5" />
+    <path d="m16 16 4.5 4.5" />
+  </svg>
+  <span class="search-hint">搜索</span>
+  <kbd>/</kbd>
+</button>
+
+<div id="search-modal" class="search-modal" hidden>
+  <div class="search-backdrop" data-close></div>
+  <div class="search-panel" role="dialog" aria-modal="true" aria-label="站内搜索">
+    <div class="search-input-row">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+        <circle cx="11" cy="11" r="6.5" />
+        <path d="m16 16 4.5 4.5" />
+      </svg>
+      <input id="search-input" type="search" placeholder="搜索标题或正文…" autocomplete="off" spellcheck="false" />
+      <button class="search-close" type="button" data-close aria-label="关闭">Esc</button>
+    </div>
+    <div id="search-results" class="search-results">
+      <p class="search-tip">输入关键词开始搜索</p>
+    </div>
+  </div>
+</div>
+
+<style>
+  .search-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text-soft);
+    font-family: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: color 0.16s ease, border-color 0.16s ease;
+  }
+
+  .search-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent-border);
+  }
+
+  .search-btn kbd {
+    padding: 1px 6px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--bg-soft);
+    font-size: 0.72rem;
+    color: var(--text-dim);
+  }
+
+  .search-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: grid;
+    place-items: start center;
+    padding: 10vh 18px 18px;
+  }
+
+  .search-modal[hidden] {
+    display: none;
+  }
+
+  .search-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(3px);
+    animation: fade-in 0.18s ease;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  .search-panel {
+    position: relative;
+    width: min(640px, 100%);
+    max-height: 72vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    animation: panel-in 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+
+  .search-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 15px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+
+  .search-input-row input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.98rem;
+    outline: none;
+  }
+
+  .search-close {
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-soft);
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    cursor: pointer;
+  }
+
+  .search-results {
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .search-tip {
+    margin: 10px 12px;
+    color: var(--text-dim);
+    font-size: 0.86rem;
+  }
+
+  .search-tip code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--bg-sunken);
+    font-size: 0.85em;
+  }
+
+  .result {
+    display: block;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    transition: background 0.14s ease;
+  }
+
+  .result:hover,
+  .result.is-active {
+    background: var(--bg-soft);
+  }
+
+  .result h4 {
+    margin: 0 0 4px;
+    font-size: 0.95rem;
+  }
+
+  .result .excerpt {
+    margin: 0;
+    font-size: 0.84rem;
+    color: var(--text-soft);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .result mark {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 3px;
+    padding: 0 2px;
+  }
+
+  .result .path {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+  }
+
+  @media (max-width: 720px) {
+    .search-hint,
+    .search-btn kbd {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  let pagefind: any = null;
+  let loading: Promise<any> | null = null;
+
+  async function loadPagefind() {
+    if (pagefind) return pagefind;
+    if (loading) return loading;
+    loading = (async () => {
+      try {
+        // Astro 的 BASE_URL 在构建时被替换：根目录是 "/"，子路径是 "/仓库名/"
+        const mod = await import(
+          /* @vite-ignore */ `${import.meta.env.BASE_URL}pagefind/pagefind.js`
+        );
+        await mod.options({ excerptLength: 26 });
+        pagefind = mod;
+        return mod;
+      } catch {
+        return null;
+      }
+    })();
+    return loading;
+  }
+
+  function initSearch() {
+    const openBtn = document.getElementById('search-open');
+    const modal = document.getElementById('search-modal');
+    const input = document.getElementById('search-input') as HTMLInputElement | null;
+    const results = document.getElementById('search-results');
+    if (!openBtn || !modal || !input || !results || modal.dataset.ready === '1') return;
+    modal.dataset.ready = '1';
+
+    let seq = 0;
+
+    const render = (html: string) => {
+      results.innerHTML = html;
+    };
+
+    const runSearch = async (q: string) => {
+      const mySeq = ++seq;
+      const pf = await loadPagefind();
+      if (mySeq !== seq) return;
+
+      if (!pf) {
+        render(
+          '<p class="search-tip">搜索索引还没生成。先在终端跑一次 <code>pnpm build</code>，再启动 <code>pnpm preview</code> 或 <code>pnpm serve</code> 就能搜了（线上部署时索引会自动带上）。</p>'
+        );
+        return;
+      }
+
+      if (!q.trim()) {
+        render('<p class="search-tip">输入关键词开始搜索</p>');
+        return;
+      }
+
+      const search = await pf.search(q);
+      const top = await Promise.all(search.results.slice(0, 8).map((r: any) => r.data()));
+      if (mySeq !== seq) return;
+
+      if (!top.length) {
+        render('<p class="search-tip">没有找到相关文章，换个词试试。</p>');
+        return;
+      }
+
+      render(
+        top
+          .map((r: any) => {
+            const title = r.meta?.title || r.url;
+            const excerpt = r.excerpt || '';
+            const path = r.url.replace(/^https?:\/\/[^/]+/, '');
+            return `<a class="result" href="${r.url}">
+              <h4>${title}</h4>
+              <p class="excerpt">${excerpt}</p>
+              <span class="path">${path}</span>
+            </a>`;
+          })
+          .join('')
+      );
+    };
+
+    const open = () => {
+      modal.hidden = false;
+      document.documentElement.style.overflow = 'hidden';
+      input.value = '';
+      render('<p class="search-tip">输入关键词开始搜索</p>');
+      window.setTimeout(() => input.focus(), 30);
+      loadPagefind();
+    };
+
+    const close = () => {
+      modal.hidden = true;
+      document.documentElement.style.overflow = '';
+      seq++;
+    };
+
+    openBtn.addEventListener('click', open);
+    modal.querySelectorAll('[data-close]').forEach((n) => n.addEventListener('click', close));
+    input.addEventListener('input', () => runSearch(input.value));
+
+    document.addEventListener('keydown', (e) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      const typing = tag === 'INPUT' || tag === 'TEXTAREA';
+
+      if (e.key === 'Escape' && !modal.hidden) close();
+
+      if (e.key === '/' && !typing && modal.hidden) {
+        e.preventDefault();
+        open();
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        if (modal.hidden) open();
+        else close();
+      }
+
+      // 上下键在结果之间移动
+      if (!modal.hidden && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        const items = [...results.querySelectorAll<HTMLAnchorElement>('.result')];
+        if (!items.length) return;
+        e.preventDefault();
+        const idx = items.findIndex((i) => i.classList.contains('is-active'));
+        const next =
+          e.key === 'ArrowDown' ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
+        items.forEach((i) => i.classList.remove('is-active'));
+        items[next].classList.add('is-active');
+        items[next].scrollIntoView({ block: 'nearest' });
+      }
+
+      if (!modal.hidden && e.key === 'Enter') {
+        const active = results.querySelector<HTMLAnchorElement>('.result.is-active');
+        if (active) {
+          e.preventDefault();
+          active.click();
+        }
+      }
+    });
+
+    results.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('a')) close();
+    });
+
+    document.addEventListener('astro:before-swap', () => close(), { once: true });
+  }
+
+  initSearch();
+  document.addEventListener('astro:page-load', initSearch);
+</script>

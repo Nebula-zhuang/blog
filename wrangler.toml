@@ -1,0 +1,12 @@
+# Cloudflare Pages 配置
+# 说明：点赞 / 阅读量 / 在线人数 由 functions/api/* 这套 Pages Functions 提供，
+# 需要在 Cloudflare 后台把这个 Pages 项目绑定一个 KV 命名空间，变量名必须是 BLOG_KV。
+
+name = "my-blog"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-01-01"
+
+# 本地调试 `pnpm cf:dev` 时用本地 KV 模拟；线上请在 Dashboard → Settings → Functions → KV 绑定
+# [[kv_namespaces]]
+# binding = "BLOG_KV"
+# id = "在 Cloudflare 后台创建的 KV 命名空间 ID"
