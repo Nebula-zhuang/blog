@@ -50,10 +50,12 @@ export const site = {
   author: '流云',
   /**
    * 站点地址（用于 RSS、sitemap、OG 图、canonical）
-   * - 本地开发留空即可，默认 http://localhost:4321
-   * - 线上由环境变量 SITE_URL 注入
+   * 和 astro.config.mjs 里的 PRODUCTION_URL 保持一致。
+   * 本地开发自动用 localhost；线上用生产地址；可用环境变量 SITE_URL 覆盖。
    */
-  url: process.env.SITE_URL || 'http://localhost:4321',
+  url:
+    process.env.SITE_URL ||
+    (import.meta.env.DEV ? 'http://localhost:4321' : 'https://blog-6tl.pages.dev'),
 
   /**
    * 右侧边栏（头像那栏）——这里所有内容都在侧边栏显示

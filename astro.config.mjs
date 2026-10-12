@@ -3,22 +3,23 @@ import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 
 /**
- * 站点地址与路径
+ * 站点地址
  *
- * 三种部署方式，只靠两个环境变量区分，代码不用改：
+ * 优先级：环境变量 SITE_URL  >  内置的生产地址  >  本地 localhost
  *
- * 1. 本地开发
- *    pnpm dev                      → http://localhost:4321/
+ * - 本地开发（npm run dev）：自动用 http://localhost:4321，不用管
+ * - 线上构建（npm run build）：用下面 PRODUCTION_URL
+ * - 想临时改：设环境变量即可，例如 BASE_PATH（GitHub Pages 子路径）
  *
- * 2. GitHub Pages（github.io，站点在子路径下）
- *    SITE_URL=https://用户名.github.io
- *    BASE_PATH=/仓库名
- *
- * 3. Cloudflare Pages / 自定义域名（站点在根目录）
- *    SITE_URL=https://你的域名
- *    BASE_PATH 留空即可
+ * ⚠️ 换了域名（比如绑了自定义域名）只需要改 PRODUCTION_URL 这一行，
+ *    或者设环境变量 SITE_URL 覆盖它。
  */
-const siteUrl = process.env.SITE_URL || 'http://localhost:4321';
+const PRODUCTION_URL = 'https://blog-6tl.pages.dev';
+
+const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('dev');
+
+const siteUrl =
+  process.env.SITE_URL || (isDev ? 'http://localhost:4321' : PRODUCTION_URL);
 
 // 归一化：允许写 "仓库名" 或 "/仓库名/" 或 "/仓库名"
 /** @param {string | undefined} raw */
@@ -33,7 +34,7 @@ const base = normalizeBase(process.env.BASE_PATH);
 export default defineConfig({
   site: siteUrl,
   base,
-  // 纯静态输出：产物是 dist/ 下的静态文件，可直接丢给 GitHub Pages / Cloudflare Pages
+  // 纯静态输出：产物是 dist/ 下的静态文件，可直接丢给 Cloudflare Pages / GitHub Pages
   output: 'static',
   integrations: [sitemap()],
   markdown: {
