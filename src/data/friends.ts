@@ -1,8 +1,17 @@
 /**
  * 友情链接数据
  *
- * 现在这个数组是空的，所以侧边栏和 /friends 页面都不会出现友链内容。
- * 想加友链时，在下面数组里追加一项即可（格式见注释）。
+ * 加一条友链就在下面数组里追加一项，格式：
+ *   {
+ *     name: '站点名',            // 必填
+ *     url: 'https://...',        // 必填
+ *     desc: '一句话介绍',         // 可选，显示在 /friends 页
+ *     initial: '字',             // 可选，头像里显示的字（默认取名字第一个字）
+ *     color: '#2563eb',          // 可选，头像底色
+ *     avatar: 'https://...',     // 可选，有头像图就填这个，优先于 initial
+ *   }
+ *
+ * 侧边栏显示前 5 个，/friends 页显示全部。
  */
 export interface Friend {
   name: string;
@@ -14,12 +23,11 @@ export interface Friend {
 }
 
 export const friends: Friend[] = [
-  // 示例（改成真实友链即可）：
-  // {
-  //   name: '某某的博客',
-  //   url: 'https://example.com',
-  //   desc: '一句话介绍',
-  //   initial: '某',
-  //   color: '#2563eb',
-  // },
+  {
+    name: '深圳大学',
+    url: 'https://www.szu.edu.cn',
+    desc: '深圳大学官方网站 —— 自立、自律、自强。',
+    initial: '深',
+    color: '#005bac',
+  },
 ];
