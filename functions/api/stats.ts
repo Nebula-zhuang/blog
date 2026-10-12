@@ -18,7 +18,13 @@ interface Env {
 type Action = 'like' | 'unlike' | 'view';
 
 const ONLINE_WINDOW = 60; // 秒，多久内活跃算"在线"
-const RATE_WINDOW = 10; // 秒，同一访客对同一路径的最小写入间隔
+/**
+ * 同一访客对同一篇文章的最小重复上报间隔（秒）。
+ *
+ * ⚠️ Cloudflare KV 的 expirationTtl 最小是 60 秒，小于 60 会直接抛异常
+ *    （表现为 Workers error 1101）。所以这里最小只能取 60。
+ */
+const RATE_WINDOW = 60;
 
 /** 简易稳定哈希：用 IP + UA 生成访客指纹，避免依赖第三方库 */
 async function visitorHash(request: Request): Promise<string> {
@@ -96,53 +102,61 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const now = Math.floor(Date.now() / 1000);
   const kv = env.BLOG_KV;
 
-  // 记录在线状态（KV 的 expirationTtl 最小 60 秒）
-  await kv.put(`online:${hash}`, String(now), { expirationTtl: 120 });
+  try {
+    // 记录在线状态（KV 的 expirationTtl 最小 60 秒）
+    await kv.put(`online:${hash}`, String(now), { expirationTtl: 120 });
 
-  const likeKey = `like:${path}:${hash}`;
-  const rateKey = `rate:${hash}:${path}`;
+    const likeKey = `like:${path}:${hash}`;
+    const rateKey = `rate:${hash}:${path}`;
 
-  let liked = (await kv.get(likeKey)) !== null;
-  let delta = 0;
+    let liked = (await kv.get(likeKey)) !== null;
+    let delta = 0;
 
-  if (action === 'view') {
-    // 同一访客 10 秒内重复上报只算一次，挡掉刷新狂刷
-    const last = await kv.get(rateKey);
-    if (!last) {
-      await kv.put(rateKey, String(now), { expirationTtl: RATE_WINDOW });
-      delta = 1;
+    if (action === 'view') {
+      // 同一访客在 RATE_WINDOW 秒内重复上报只算一次，挡掉刷新狂刷
+      const last = await kv.get(rateKey);
+      if (!last) {
+        await kv.put(rateKey, String(now), { expirationTtl: RATE_WINDOW });
+        delta = 1;
+      }
+    } else if (action === 'like') {
+      if (!liked) {
+        await kv.put(likeKey, '1');
+        liked = true;
+        delta = 1;
+      }
+    } else if (action === 'unlike') {
+      if (liked) {
+        await kv.delete(likeKey);
+        liked = false;
+        delta = -1;
+      }
     }
-  } else if (action === 'like') {
-    if (!liked) {
-      await kv.put(likeKey, '1');
-      liked = true;
-      delta = 1;
+
+    const current = await num(kv, `likes:${path}`);
+    const likes = Math.max(0, current + delta);
+    if (delta !== 0) await kv.put(`likes:${path}`, String(likes));
+
+    let views = await num(kv, `views:${path}`);
+    if (action === 'view' && delta === 1) {
+      views += 1;
+      await kv.put(`views:${path}`, String(views));
     }
-  } else if (action === 'unlike') {
-    if (liked) {
-      await kv.delete(likeKey);
-      liked = false;
-      delta = -1;
-    }
+
+    return json({
+      path,
+      views,
+      likes,
+      liked,
+      online: await countOnline(kv),
+    });
+  } catch (error) {
+    // 兜底：任何存储异常都返回可读的 JSON，而不是 Workers 的 "error code: 1101"
+    return json(
+      { error: 'kv_error', message: error instanceof Error ? error.message : String(error) },
+      500
+    );
   }
-
-  const current = await num(kv, `likes:${path}`);
-  const likes = Math.max(0, current + delta);
-  if (delta !== 0) await kv.put(`likes:${path}`, String(likes));
-
-  let views = await num(kv, `views:${path}`);
-  if (action === 'view' && delta === 1) {
-    views += 1;
-    await kv.put(`views:${path}`, String(views));
-  }
-
-  return json({
-    path,
-    views,
-    likes,
-    liked,
-    online: await countOnline(kv),
-  });
 };
 
 function json(data: unknown, status = 200): Response {
