@@ -3,6 +3,18 @@
  */
 
 /**
+ * ⭐ 站点地址（唯一需要改的地方）
+ *
+ * 换域名时只改这一行：astro.config.mjs 和全站的 canonical / RSS / sitemap /
+ * 分享卡片都会跟着变，不用改别处。
+ *
+ * - 现在：https://blog-6tl.pages.dev
+ * - 绑了自定义域名后改成：'https://你的域名'
+ * - 想临时覆盖：设环境变量 SITE_URL（优先级高于这里）
+ */
+export const PRODUCTION_URL = 'https://blog-6tl.pages.dev';
+
+/**
  * 背景方案（默认已关闭，走纯白简约风）
  *
  * - none    : 不要背景（默认）
@@ -50,12 +62,9 @@ export const site = {
   author: '流云',
   /**
    * 站点地址（用于 RSS、sitemap、OG 图、canonical）
-   * 和 astro.config.mjs 里的 PRODUCTION_URL 保持一致。
-   * 本地开发自动用 localhost；线上用生产地址；可用环境变量 SITE_URL 覆盖。
+   * 取自文件顶部的 PRODUCTION_URL，本地开发自动用 localhost
    */
-  url:
-    process.env.SITE_URL ||
-    (import.meta.env.DEV ? 'http://localhost:4321' : 'https://blog-6tl.pages.dev'),
+  url: process.env.SITE_URL || (import.meta.env.DEV ? 'http://localhost:4321' : PRODUCTION_URL),
 
   /**
    * 右侧边栏（头像那栏）——这里所有内容都在侧边栏显示
@@ -135,32 +144,17 @@ export const site = {
   /**
    * Giscus 评论（基于 GitHub Discussions，免费、不需要服务器）
    *
-   * 你现在只需要填 3 个值，评论就活了。它们必须来自【你自己新建的一个公开仓库】——
-   * 我无法替你建仓库，但填法已经写好，照着做 2 分钟：
-   *
-   * 1. GitHub 上新建公开仓库，名字建议 blog-comments（专门放评论，和博客代码分开）
-   * 2. 进入那个仓库：Settings → General → Features → 勾上 Discussions
-   *    然后点 Discussions 标签 → New category → 名字写 General → 类型选 Announcements → 创建
-   * 3. 打开 https://giscus.app/zh-CN ，"仓库" 填 你的用户名/blog-comments
-   *    页面下方会生成一段代码，把这三个值复制过来：
-   *      data-repo           → 下面 repo
-   *      data-repo-id        → 下面 repoId
-   *      data-category-id    → 下面 categoryId
-   *
-   * 三个值填完保存，评论框立刻出现。留空时文章页只显示一段提示，不会报错。
+   * 已配置完成。数据存在仓库 Nebula-zhuang/blog-comment 的 Discussions 里。
+   * 想换分类或换仓库，重新去 https://giscus.app/zh-CN 生成这几个值即可。
    */
   giscus: {
-    /** 例如 'Nebula-zhuang/blog-comments' */
-    repo: '',
-    /** 例如 'R_kgDOMxxxxxxx' */
-    repoId: '',
-    /** 分类名，和你第 2 步创建的保持一致即可 */
+    repo: 'Nebula-zhuang/blog-comment',
+    repoId: 'R_kgDOVGJbDA',
     category: 'General',
-    /** 例如 'DIC_kwDOMxxxxxxx' */
-    categoryId: '',
+    categoryId: 'DIC_kwDOVGJbDM4DIGCt',
     mapping: 'pathname',
     reactionsEnabled: '1',
-    inputPosition: 'top',
+    inputPosition: 'bottom',
     lang: 'zh-CN',
   },
 
