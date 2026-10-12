@@ -27,7 +27,7 @@ export const friends: Friend[] = [
     name: '深圳大学',
     url: 'https://www.szu.edu.cn',
     desc: '深圳大学官方网站 —— 自立、自律、自强。',
-    initial: '深',
-    color: '#005bac',
+    // 校徽：public/images/szu-logo.png（已裁成正方形 128×128，本地托管）
+    avatar: '/images/szu-logo.png',
   },
 ];

@@ -553,6 +553,15 @@ body.bg-grain::after {
   font-weight: 700;
   color: var(--text-soft);
   flex: none;
+  overflow: hidden;
+}
+
+/* 有 logo 图片时，图片铺满圆形容器 */
+.friend-dot img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .side-more {
