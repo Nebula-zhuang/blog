@@ -41,20 +41,39 @@ async function visitorHash(request: Request): Promise<string> {
     .join('');
 }
 
-/** 只允许站内相对路径，防止被人拿来刷 KV 键 */
+/**
+ * 规范化文章路径，作为 KV 的键。
+ *
+ * 必须支持中文 —— 分类目录可能叫「随笔」，路径就是 /posts/随笔/hello-world/。
+ * 所以这里用「黑名单」而不是「白名单」：
+ *   - 必须有前导 /
+ *   - 禁止 .. 路径穿越、连续斜杠、反斜杠、控制字符
+ * 返回不规范（缺尾斜杠）时会补上，保证同一篇文章的键稳定。
+ */
 function normalizePath(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
   let p = raw.trim();
   try {
-    if (p.startsWith('http')) p = new URL(p).pathname;
+    if (/^https?:\/\//i.test(p)) p = new URL(p).pathname;
+  } catch {
+    return null;
+  }
+  // 解码一次，兼容传进来的是 %E9%9A%8F%E7%AC%94 这种转义形式
+  try {
+    p = decodeURIComponent(p);
   } catch {
     return null;
   }
   if (!p.startsWith('/')) return null;
   p = p.split('?')[0].split('#')[0];
-  if (p.length > 180) return null;
-  if (!/^[A-Za-z0-9\-._~/]*$/.test(p)) return null;
-  return p.endsWith('/') || p.includes('.') ? p : `${p}/`;
+  if (p.length > 300) return null;
+  // 安全校验
+  if (p.includes('..')) return null;
+  if (p.includes('//')) return null;
+  if (p.includes('\\')) return null;
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001f\u007f]/.test(p)) return null;
+  return p.endsWith('/') || p.split('/').pop()?.includes('.') ? p : `${p}/`;
 }
 
 const num = async (kv: KVNamespace, key: string): Promise<number> => {
