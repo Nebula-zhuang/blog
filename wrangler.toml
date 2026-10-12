@@ -1,17 +1,17 @@
 # Cloudflare Pages 配置
 #
-# 说明：
-#   - 静态产物目录是 dist（Cloudflare 面板里 Build output 也填 dist）
-#   - 点赞 / 阅读量 / 在线人数 由 functions/api/stats.ts 提供，
-#     需要在 Cloudflare 面板绑定一个 KV 命名空间，变量名必须是 BLOG_KV
-#   - 普通环境变量写在本文件的 [vars] 里：新版 Pages 把面板上的
-#     "Variables and secrets" 交给 wrangler.toml 管理，面板只能加 Secret
+# 这个项目（Cloudflare 项目名 blog）的「变量」和「绑定」都由本文件托管，
+# 所以面板上的 Variables 和 Bindings 是只读的 —— 要改就改这里，然后 git push。
+#
+# 相关：
+#   - 静态产物目录：dist（面板 Build output 也是 dist）
+#   - 点赞 / 阅读量 / 在线人数：functions/api/stats.ts + 下面的 KV 绑定
 
 name = "blog"
 pages_build_output_dir = "dist"
 compatibility_date = "2025-01-01"
 
-# 普通环境变量：构建时可用，代码里通过 process.env.SITE_URL 读取
+# 普通环境变量（构建时与运行时都可用）
 [vars]
 # 站点地址：影响 RSS、sitemap、canonical、分享卡片
 SITE_URL = "https://blog-6tl.pages.dev"
@@ -19,8 +19,8 @@ SITE_URL = "https://blog-6tl.pages.dev"
 # 以后绑了自定义域名，把上面那行改成你的域名，例如：
 # SITE_URL = "https://liuyun.dev"
 
-# KV 绑定（点赞 / 阅读量 / 在线人数的存储）
-# 在 Cloudflare 面板创建 KV 命名空间后，解开注释并把 id 填上
-# [[kv_namespaces]]
-# binding = "BLOG_KV"
-# id = "面板 KV 页面里的命名空间 ID"
+# KV 绑定：点赞 / 阅读量 / 在线人数的存储
+# binding 必须叫 BLOG_KV（代码里写死的），id 是 KV 命名空间的 ID
+[[kv_namespaces]]
+binding = "BLOG_KV"
+id = "3356ab9ea6c943d7bf040bde709dc9b9"
